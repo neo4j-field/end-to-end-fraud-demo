@@ -1,5 +1,5 @@
 #!/bin/sh
-STAGING="${SPARK_STAGING:=gs://neo4j_voutila/spark}"
+STAGING="${STAGING:=}"
 REGION="${REGION:=$(gcloud config get dataproc/region)}"
 CLUSTER="${DATAPROC_CLUSTER:=}"
 PROJECT="${PROJECT:=$(gcloud config get project)}"
@@ -17,9 +17,9 @@ fail () {
     exit 1
 }
 
-if [ -z "${STAGING}" ]; then fail "no SPARK_STAGING set!"; fi
-if [ -z "${CLUSTER}" ]; then fail "no DATAPROC_CLUSTER set!"; fi
-if [ -z "${NEO4J_URL}" ]; then fail "no NEO4J_URL set!"; fi
+if [ -z "${STAGING}" ]; then fail "no STAGING set, please specify a GCS uri!"; fi
+if [ -z "${CLUSTER}" ]; then fail "no DATAPROC_CLUSTER set, please specify a cluster name"; fi
+if [ -z "${NEO4J_URL}" ]; then fail "no NEO4J_URL set, please provide a Bolt URI"; fi
 if [ -z "${BUCKET}" ]; then fail "no BUCKET set, please set to source of parquet file!"; fi
 
 JARFILE="neo4j-connector-apache-spark_2.12-4.1.0_for_spark_3-special.jar"
@@ -35,11 +35,11 @@ fi
 # Deploy our job artifacts
 gsutil rsync -x "venv" "$(pwd)" "${STAGING}/"
 
-# submit job
+# Submit DataProc job!
 gcloud dataproc jobs submit pyspark \
        --region "${REGION}" \
        --cluster "${CLUSTER}" \
        --jars "${STAGING}/${JARFILE}" \
        "${STAGING}/${JOBFILE}" -- \
-       --user neo4j --password password --prefix fraud-demo \
+       --user "${NEO4J_URL}" --password "${NEO4J_PASS}" --prefix "${PREFIX}" \
        "${NEO4J_URL}" "${BUCKET}"
