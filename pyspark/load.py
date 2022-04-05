@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
+import argparse
 from itertools import chain
 
 import pyspark
 from pyspark.sql import SparkSession
 import pyarrow as pa
-
 from google.cloud import storage
 
-## Environment Config
-BUCKET = "neo4j_voutila"
-PREFIX = "fraud-demo"
-NEO4J_URL = "neo4j://voutila-dataproc-demo.northamerica-northeast1-a.c.neo4j-se-team-201905.internal:7687"
+## Job Config -- at minimum we need a Neo4j uri for the sink and the bucket to
+## read from
+parser = argparse.ArgumentParser()
+parser.add_argument("uri", help="Neo4j Bolt URI")
+parser.add_argument("bucket", help="GCS Bucket name containing Parquet files")
+parser.add_argument("--user", dest="user", default="neo4j")
+parser.add_argument("--password", dest="password", default="password")
+parser.add_argument("--prefix", dest="prefix", default="")
+parser.add_argument("--database", dest="database", default="neo4j")
+args = parser.parse_args()
 
 NEO4J_SPARK_OPTS = {
-    "url": NEO4J_URL,
+    "url": args.uri,
+    "database": args.database,
     "authentication.type": "basic",
-    "authentication.basic.username": "neo4j",
-    "authentication.basic.password": "password",
+    "authentication.basic.username": args.user,
+    "authentication.basic.password": args.password,
 }
 
 ## Cheat Sheet
@@ -63,13 +70,14 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 ## Find our Source Data
-blobs = gcs.list_blobs(BUCKET, prefix=PREFIX)
+blobs = gcs.list_blobs(args.bucket, prefix=args.prefix)
 parquet_blobs = filter(lambda blob: blob.name.endswith('parquet'), blobs)
 
-# Split our files into nodes and edges with their respective configuration
+# Split our files into nodes and edges with their respective configuration and
+# connector mode.
 nodes, edges = [], []
 for blob in parquet_blobs:
-    basename = blob.name.replace(".parquet", "").replace(f"{PREFIX}/", "")
+    basename = blob.name.replace(".parquet", "").replace(f"{args.prefix}/", "")
     uri = f"gs://{blob.bucket.name}/{blob.name}"
     if basename in NODES:
         nodes.append((uri, NODES[basename], "Overwrite"))
@@ -78,7 +86,7 @@ for blob in parquet_blobs:
     else:
         print(f"unknown file: {blob.name}")
 
-# Make sure we operate on nodes first
+# Make sure we operate on nodes first to improve edge loading
 for uri, config, mode in chain(nodes, edges):
     # Read the parquet file into a Spark DataFrame
     print(f"reading {uri}")
@@ -86,7 +94,7 @@ for uri, config, mode in chain(nodes, edges):
     print(f"read parquet file with {df.count():,} rows")
 
     # Use the Neo4j Spark Connector to write the Node/Edge to the database
-    print(f"writing dataframe to {NEO4J_URL}")
+    print(f"writing dataframe to {args.uri}")
     df.write \
       .format("org.neo4j.spark.DataSource") \
       .mode(mode) \
