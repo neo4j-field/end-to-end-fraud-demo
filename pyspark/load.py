@@ -32,11 +32,14 @@ SCHEMA = "schema.optimization.type"
 def node(labels, key, **kwargs):
     return { "labels": labels, "node.keys": key, SCHEMA: "NODE_CONSTRAINTS" }
 
-def edge(_type, source, source_key, target, target_key, **kwargs):
-    return { SOURCE: source, SOURCE_KEY: f"start_{source_key}:{source_key}", SOURCE_MODE: "Match",
-             TARGET: target, TARGET_KEY: f"end_{target_key}:{target_key}", TARGET_MODE: "Match",
-             TYPE: _type, "relationship.save.strategy": "keys",
-            }
+def edge(_type, source, source_key, target, target_key, props=None):
+    options = {
+        SOURCE: source, SOURCE_KEY: f"start_{source_key}:{source_key}", SOURCE_MODE: "Match",
+        TARGET: target, TARGET_KEY: f"end_{target_key}:{target_key}", TARGET_MODE: "Match",
+        TYPE: _type, "relationship.save.strategy": "keys", }
+    if props:
+        options.update({ "relationship.properties": props })
+    return options
 
 ## Data Mapping
 NODES = {
@@ -46,11 +49,11 @@ NODES = {
     "user": node(":User", "guid"),
 }
 EDGES = {
-    "has_cc": edge("HAS_CC", ":User", "guid", ":Card", "guid"),
-    "has_ip": edge("HAS_IP", ":User", "guid", ":IP", "guid"),
-    "p2p": edge("P2P", ":User", "guid", ":User", "guid"),
+    "has_cc": edge("HAS_CC", ":User", "guid", ":Card", "guid", "cardDate"),
+    "has_ip": edge("HAS_IP", ":User", "guid", ":IP", "guid", "ipDate"),
+    "p2p": edge("P2P", ":User", "guid", ":User", "guid", "totalAmount,transactionDateTime"),
     "referred": edge("REFERRED", ":User", "guid", ":User", "guid"),
-    "used": edge("USED", ":User", "guid", ":Device", "guid"),
+    "used": edge("USED", ":User", "guid", ":Device", "guid", "deviceDate"),
 }
 
 ## Globals
@@ -69,14 +72,14 @@ for blob in parquet_blobs:
     basename = blob.name.replace(".parquet", "").replace(f"{PREFIX}/", "")
     uri = f"gs://{blob.bucket.name}/{blob.name}"
     if basename in NODES:
-        nodes.append((uri, NODES[basename]))
+        nodes.append((uri, NODES[basename], "Overwrite"))
     elif basename in EDGES:
-        edges.append((uri, EDGES[basename]))
+        edges.append((uri, EDGES[basename], "Append"))
     else:
         print(f"unknown file: {blob.name}")
 
 # Make sure we operate on nodes first
-for uri, config in chain(nodes, edges):
+for uri, config, mode in chain(nodes, edges):
     # Read the parquet file into a Spark DataFrame
     print(f"reading {uri}")
     df = spark.read.parquet(uri)
@@ -86,7 +89,7 @@ for uri, config in chain(nodes, edges):
     print(f"writing dataframe to {NEO4J_URL}")
     df.write \
       .format("org.neo4j.spark.DataSource") \
-      .mode("Overwrite") \
+      .mode(mode) \
       .options(**NEO4J_SPARK_OPTS) \
       .options(**config) \
       .save()
