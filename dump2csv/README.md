@@ -11,7 +11,7 @@ Expects environment variables because I'm lazy:
 
 ## Usage
 
-To build or use, go grab (Leiningen)[https://leiningen.org/].
+To build or use, go grab [Leiningen](https://leiningen.org/).
 
 ```
 $ lein run "MATCH (n) RETURN id(n)"
