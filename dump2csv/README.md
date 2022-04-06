@@ -1,22 +1,12 @@
 # dump2csv
 
-A Clojure library designed to ... well, that part is up to you.
+Clojure utility for dumping data from a Neo4j system via a Cypher query.
 
-## Usage
+Expects environment variables:
 
-FIXME
+- `NEO4J_URL`: bolt url (default: `neo4j://localhost:7687`)
+- `NEO4J_USER`: username (default: `neo4j`)
+- `NEO4J_PASS`: password (default: `password`)
 
-## License
 
-Copyright © 2022 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+That's it!
