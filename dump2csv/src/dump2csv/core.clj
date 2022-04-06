@@ -20,9 +20,10 @@
         ;; Need a manual flush since it's stdout
         (.flush writer)))))
 
-(def uri "neo4j+s://1179cd74.databases.neo4j.io:7687")
-(def username "neo4j")
-(def password "password")
+(def -env (System/getenv))
+(def uri (.getOrDefault -env "NEO4J_URL" "neo4j://localhost:7687"))
+(def username (.getOrDefault -env "NEO4J_USER" "neo4j"))
+(def password (.getOrDefault -env "NEO4J_PASS" "password"))
 (def auth (AuthTokens/basic username password))
 
 (defn -log
