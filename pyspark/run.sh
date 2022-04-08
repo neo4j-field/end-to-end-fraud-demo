@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Current Neo4j Spark Connector jar
-JARFILE="neo4j-connector-apache-spark_2.12-4.1.0_for_spark_3-special.jar"
+JARFILE="neo4j-connector-apache-spark_2.12-4.1.1_for_spark_3.jar"
 
 # GCP config
 STAGING="${STAGING:=}"
@@ -41,7 +41,7 @@ if [ "${#}" -ne 1 ]; then usage; fi
 JOBFILE="${1:=}"
 
 # Inspect required toggles
-if [ -f "${JOBFILE}" ]; then usage; fi
+if [ ! -f "${JOBFILE}" ]; then usage; fi
 if [ -z "${STAGING}" ]; then fail "no STAGING set, please specify a GCS uri!"; fi
 if [ -z "${CLUSTER}" ]; then fail "no CLUSTER set, please specify a cluster name"; fi
 if [ -z "${NEO4J_URL}" ]; then fail "no NEO4J_URL set, please provide a Bolt URI"; fi
